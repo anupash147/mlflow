@@ -1,0 +1,143 @@
+{
+    "openapi": "3.0",
+    "info": {
+        "title": "mlflow-dev",
+        "description": "mlflow-dev",
+        "version": "1"
+    },
+    "servers": [],
+    "paths": {
+        "/api/2.0/{path:.+|}": {
+            "delete": {
+                "tags": [
+                    "model-versions",
+                    "registered-models"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "summary": "Delete an existing model or model version",
+                "operationId": "delete__path_3_1618245262864",
+                "responses": {
+                    "default": {}
+                },
+                "x-media-type-request-default": "true",
+                "x-media-type-response-default": "true"
+            },
+            "get": {
+                "tags": [
+                    "artifacts",
+                    "experiments",
+                    "metrics",
+                    "model-version",
+                    "registered-models",
+                    "runs"
+                ],
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
+                "operationId": "get__path_1_1618245262864",
+                "responses": {
+                    "default": {}
+                }
+            },
+            "patch": {
+                "tags": [
+                    "model-versions",
+                    "registered-models"
+                ],
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "summary": "patch an existing resource",
+                "operationId": "op_patch_resource",
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Order",
+                        "content": {
+                            "application/json": {}
+                        }
+                    }
+                },
+                "x-media-type-request-default": "false",
+                "x-media-type-response-default": "false"
+            },
+            "post": {
+                "tags": [
+                    "experiments",
+                    "model-versions",
+                    "registered-models",
+                    "runs"
+                ],
+                "parameters": [],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "summary": "Create an experiments for mlflow",
+                "operationId": "experiment_set_experiment_tag",
+                "responses": {
+                    "200": {
+                        "description": "{ \"experiment_id\" : \"4\"}",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid Order",
+                        "content": {
+                            "application/json": {}
+                        }
+                    }
+                },
+                "x-media-type-request-default": "false",
+                "x-media-type-response-default": "false"
+            }
+        }
+    },
+    "components": {
+        "schemas": {}
+    },
+    "tags": []
+}
