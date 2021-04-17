@@ -15,6 +15,7 @@ _TRACKING_URI_ENV_VAR = "MLFLOW_TRACKING_URI"
 
 # Extra environment variables which take precedence for setting the basic/bearer
 # auth on http requests.
+_TRACKING_OATH2_ENV_VAR = "MLFLOW_TRACKING_OATH_PROVIDER_URL"
 _TRACKING_USERNAME_ENV_VAR = "MLFLOW_TRACKING_USERNAME"
 _TRACKING_PASSWORD_ENV_VAR = "MLFLOW_TRACKING_PASSWORD"
 _TRACKING_TOKEN_ENV_VAR = "MLFLOW_TRACKING_TOKEN"
@@ -120,6 +121,7 @@ def _get_sqlalchemy_store(store_uri, artifact_uri):
 def _get_default_host_creds(store_uri):
     return rest_utils.MlflowHostCreds(
         host=store_uri,
+        oath2_provider=os.environ.get(_TRACKING_OATH2_ENV_VAR),
         username=os.environ.get(_TRACKING_USERNAME_ENV_VAR),
         password=os.environ.get(_TRACKING_PASSWORD_ENV_VAR),
         token=os.environ.get(_TRACKING_TOKEN_ENV_VAR),
