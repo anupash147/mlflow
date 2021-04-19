@@ -21,6 +21,60 @@ _logger = logging.getLogger(__name__)
 
 _DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
 
+import os
+from datetime import datetime, timedelta
+from dateutil import parser
+
+# if 'START' not in os.environ:
+#    os.environ['START'] = str(datetime.now() + timedelta(days=+1))
+
+from datetime import datetime
+from dateutil import parser
+
+
+def lastFetch(operation='r'):
+    # @todo for persisting the token
+    if operation == 'w':
+        open(".lasttoken", "w").write(str(datetime.now()))
+        return open(".lasttoken", "r").readline()
+    else:
+        try:
+            return open(".lasttoken", "r").readline()
+        except FileNotFoundError:
+            return lastFetch('w')
+
+
+def get_bearer_token(oath_url, client_id, client_secret):
+    """
+    Get bearer token from an oath provider.
+
+    :param oath_url: example https://login.microsoftonline.com/<redacted>/oauth2/v2.0/token
+    :param client_id:
+    :param client_secret:
+    :return: bearer token
+    """
+
+    def reset_bearer():
+        """
+        This function will call itself until it recieves a bearer
+        """
+        try:
+            r = requests.post(url="{}".format(oath_url),
+                              headers={"Content-Type": "application/x-www-form-urlencoded"},
+                              data={
+                                  "client_id": client_id,
+                                  "client_secret": client_secret,
+                                  "scope": "{}/.default".format(client_id),
+                                  "grant_type": "client_credentials"
+
+                              })
+            r.raise_for_status()
+            return r.json()['access_token']
+        except:
+            return reset_bearer()
+
+    return reset_bearer()
+
 
 def http_request(
     host_creds, endpoint, retries=3, retry_interval=3, max_rate_limit_interval=60, **kwargs
@@ -38,7 +92,11 @@ def http_request(
     """
     hostname = host_creds.host
     auth_str = None
-    if host_creds.username and host_creds.password:
+    if host_creds.username and host_creds.password and host_creds.oath2_provider:
+        auth_str = "Bearer %s" % get_bearer_token(oath_url=host_creds.oath2_provider,
+                                                  client_id=host_creds.username,
+                                                  client_secret=host_creds.password)
+    elif host_creds.username and host_creds.password and not host_creds.oath2_provider:
         basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode("utf-8")
         auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
     elif host_creds.token:
@@ -258,6 +316,7 @@ class MlflowHostCreds(object):
     def __init__(
         self,
         host,
+        oath2_provider=None,
         username=None,
         password=None,
         token=None,
@@ -282,6 +341,7 @@ class MlflowHostCreds(object):
                 error_code=INVALID_PARAMETER_VALUE,
             )
         self.host = host
+        self.oath2_provider = oath2_provider
         self.username = username
         self.password = password
         self.token = token
