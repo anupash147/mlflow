@@ -43,6 +43,7 @@ WORKDIR /opt/mlflow
 {entrypoint}
 """
 
+
 @click.group("sagemaker")
 def commands():
     """
@@ -314,6 +315,7 @@ def build_and_push_container(build, push, container, mlflow_home):
         )
     if push:
         mlflow.sagemaker.push_image_to_ecr(container)
+
 
 @commands.command("code-build-and-push-container")
 @click.option("--build/--no-build", default=True, help="Build the container if set.")

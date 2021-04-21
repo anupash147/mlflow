@@ -13,6 +13,7 @@ from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.utils.proto_json_utils import parse_dict
 from mlflow.utils.string_utils import strip_suffix
 from mlflow.exceptions import MlflowException, RestException
+from datetime import datetime
 
 _REST_API_PATH_PREFIX = "/api/2.0"
 RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
@@ -20,16 +21,6 @@ RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
 _logger = logging.getLogger(__name__)
 
 _DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
-
-import os
-from datetime import datetime, timedelta
-from dateutil import parser
-
-# if 'START' not in os.environ:
-#    os.environ['START'] = str(datetime.now() + timedelta(days=+1))
-
-from datetime import datetime
-from dateutil import parser
 
 
 def lastFetch(operation='r'):
@@ -77,7 +68,7 @@ def get_bearer_token(oath_url, client_id, client_secret):
 
 
 def http_request(
-    host_creds, endpoint, retries=3, retry_interval=3, max_rate_limit_interval=60, **kwargs
+        host_creds, endpoint, retries=3, retry_interval=3, max_rate_limit_interval=60, **kwargs
 ):
     """
     Makes an HTTP request with the specified method to the specified hostname/endpoint. Ratelimit
@@ -314,15 +305,15 @@ class MlflowHostCreds(object):
     """
 
     def __init__(
-        self,
-        host,
-        oath2_provider=None,
-        username=None,
-        password=None,
-        token=None,
-        ignore_tls_verification=False,
-        client_cert_path=None,
-        server_cert_path=None,
+            self,
+            host,
+            oath2_provider=None,
+            username=None,
+            password=None,
+            token=None,
+            ignore_tls_verification=False,
+            client_cert_path=None,
+            server_cert_path=None,
     ):
         if not host:
             raise MlflowException(
