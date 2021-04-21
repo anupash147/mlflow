@@ -62,19 +62,14 @@ def get_bearer_token(oath_url, client_id, client_secret):
             )
             r.raise_for_status()
             return r.json()["access_token"]
-        except requests.exceptions.HTTPError or requests.exceptions.Timeout:
+        except (requests.exceptions.HTTPError, requests.exceptions.Timeout):
             return reset_bearer()
 
     return reset_bearer()
 
 
 def http_request(
-    host_creds,
-    endpoint,
-    retries=3,
-    retry_interval=3,
-    max_rate_limit_interval=60,
-    **kwargs
+    host_creds, endpoint, retries=3, retry_interval=3, max_rate_limit_interval=60, **kwargs
 ):
     """
     Makes an HTTP request with the specified method to the specified hostname/endpoint. Ratelimit
@@ -96,9 +91,7 @@ def http_request(
             client_secret=host_creds.password,
         )
     elif host_creds.username and host_creds.password and not host_creds.oath2_provider:
-        basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode(
-            "utf-8"
-        )
+        basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode("utf-8")
         auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
     elif host_creds.token:
         auth_str = "Bearer %s" % host_creds.token
@@ -180,17 +173,15 @@ def verify_rest_response(response, endpoint):
         if _can_parse_as_json(response.text):
             raise RestException(json.loads(response.text))
         else:
-            base_msg = (
-                "API request to endpoint %s failed with error code "
-                "%s != 200" % (endpoint, response.status_code,)
+            base_msg = "API request to endpoint %s failed with error code " "%s != 200" % (
+                endpoint,
+                response.status_code,
             )
             raise MlflowException("%s. Response body: '%s'" % (base_msg, response.text))
 
     # Skip validation for endpoints (e.g. DBFS file-download API) which may return a non-JSON
     # response
-    if endpoint.startswith(_REST_API_PATH_PREFIX) and not _can_parse_as_json(
-        response.text
-    ):
+    if endpoint.startswith(_REST_API_PATH_PREFIX) and not _can_parse_as_json(response.text):
         base_msg = (
             "API request to endpoint was successful but the response body was not "
             "in a valid JSON format"

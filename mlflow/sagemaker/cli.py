@@ -58,9 +58,7 @@ def commands():
 @commands.command("deploy")
 @click.option("--app-name", "-a", help="Application name", required=True)
 @cli_args.MODEL_URI
-@click.option(
-    "--execution-role-arn", "-e", default=None, help="SageMaker execution role"
-)
+@click.option("--execution-role-arn", "-e", default=None, help="SageMaker execution role")
 @click.option("--bucket", "-b", default=None, help="S3 bucket to store model artifacts")
 @click.option("--image-url", "-i", default=None, help="ECR URL for the Docker image")
 @click.option(
@@ -72,9 +70,7 @@ def commands():
     "--mode",
     default=mlflow.sagemaker.DEPLOYMENT_MODE_CREATE,
     help="The mode in which to deploy the application."
-    " Must be one of the following: {mds}".format(
-        mds=", ".join(mlflow.sagemaker.DEPLOYMENT_MODES)
-    ),
+    " Must be one of the following: {mds}".format(mds=", ".join(mlflow.sagemaker.DEPLOYMENT_MODES)),
 )
 @click.option(
     "--archive",
@@ -278,16 +274,12 @@ def run_local(model_uri, port, image, flavor):
     """
     Serve model locally running in a Sagemaker-compatible Docker container.
     """
-    mlflow.sagemaker.run_local(
-        model_uri=model_uri, port=port, image=image, flavor=flavor
-    )
+    mlflow.sagemaker.run_local(model_uri=model_uri, port=port, image=image, flavor=flavor)
 
 
 @commands.command("build-and-push-container")
 @click.option("--build/--no-build", default=True, help="Build the container if set.")
-@click.option(
-    "--push/--no-push", default=True, help="Push the container to AWS ECR if set."
-)
+@click.option("--push/--no-push", default=True, help="Push the container to AWS ECR if set.")
 @click.option("--container", "-c", default=IMAGE, help="image name")
 @cli_args.MLFLOW_HOME
 def build_and_push_container(build, push, container, mlflow_home):
@@ -358,32 +350,20 @@ def code_build_and_push_container(build, container, mlflow_home):
         mlflow_home = os.path.abspath(mlflow_home) if mlflow_home else None
         with TempDir() as tmp:
             cwd = tmp.path()
-            install_mlflow = mlflow.models.docker_utils._get_mlflow_install_step(
-                cwd, mlflow_home
-            )
-            custom_setup_steps = setup_container(cwd) if setup_container else ""
+            install_mlflow = mlflow.models.docker_utils._get_mlflow_install_step(cwd, mlflow_home)
+            # custom_setup_steps = setup_container(cwd) if setup_container else ""
             with open(os.path.join(cwd, "Dockerfile"), "w") as f:
                 f.write(
                     _DOCKERFILE_TEMPLATE.format(
                         install_mlflow=install_mlflow,
-                        custom_setup_steps=custom_setup_steps,
+                        custom_setup_steps=setup_container,
                         entrypoint=sagemaker_image_entrypoint,
                     )
                 )
-            mlflow.models.docker_utils._logger.info(
-                "Building docker image with name %s", container
-            )
+            mlflow.models.docker_utils._logger.info("Building docker image with name %s", container)
             os.system("find {cwd}/".format(cwd=cwd))
             proc = Popen(
-                [
-                    "sm-docker",
-                    "build",
-                    ".",
-                    "--repository",
-                    container,
-                    "--file",
-                    "Dockerfile",
-                ],
+                ["sm-docker", "build", ".", "--repository", container, "--file", "Dockerfile", ],
                 cwd=cwd,
                 stdout=PIPE,
                 stderr=STDOUT,
