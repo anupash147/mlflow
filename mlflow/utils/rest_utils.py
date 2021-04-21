@@ -23,16 +23,16 @@ _logger = logging.getLogger(__name__)
 _DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
 
 
-def lastFetch(operation='r'):
+def lastFetch(operation="r"):
     # @todo for persisting the token
-    if operation == 'w':
+    if operation == "w":
         open(".lasttoken", "w").write(str(datetime.now()))
         return open(".lasttoken", "r").readline()
     else:
         try:
             return open(".lasttoken", "r").readline()
         except FileNotFoundError:
-            return lastFetch('w')
+            return lastFetch("w")
 
 
 def get_bearer_token(oath_url, client_id, client_secret):
@@ -50,25 +50,31 @@ def get_bearer_token(oath_url, client_id, client_secret):
         This function will call itself until it recieves a bearer
         """
         try:
-            r = requests.post(url="{}".format(oath_url),
-                              headers={"Content-Type": "application/x-www-form-urlencoded"},
-                              data={
-                                  "client_id": client_id,
-                                  "client_secret": client_secret,
-                                  "scope": "{}/.default".format(client_id),
-                                  "grant_type": "client_credentials"
-
-                              })
+            r = requests.post(
+                url="{}".format(oath_url),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "scope": "{}/.default".format(client_id),
+                    "grant_type": "client_credentials",
+                },
+            )
             r.raise_for_status()
-            return r.json()['access_token']
-        except:
+            return r.json()["access_token"]
+        except requests.exceptions.HTTPError or requests.exceptions.Timeout:
             return reset_bearer()
 
     return reset_bearer()
 
 
 def http_request(
-        host_creds, endpoint, retries=3, retry_interval=3, max_rate_limit_interval=60, **kwargs
+    host_creds,
+    endpoint,
+    retries=3,
+    retry_interval=3,
+    max_rate_limit_interval=60,
+    **kwargs
 ):
     """
     Makes an HTTP request with the specified method to the specified hostname/endpoint. Ratelimit
@@ -84,11 +90,15 @@ def http_request(
     hostname = host_creds.host
     auth_str = None
     if host_creds.username and host_creds.password and host_creds.oath2_provider:
-        auth_str = "Bearer %s" % get_bearer_token(oath_url=host_creds.oath2_provider,
-                                                  client_id=host_creds.username,
-                                                  client_secret=host_creds.password)
+        auth_str = "Bearer %s" % get_bearer_token(
+            oath_url=host_creds.oath2_provider,
+            client_id=host_creds.username,
+            client_secret=host_creds.password,
+        )
     elif host_creds.username and host_creds.password and not host_creds.oath2_provider:
-        basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode("utf-8")
+        basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode(
+            "utf-8"
+        )
         auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
     elif host_creds.token:
         auth_str = "Bearer %s" % host_creds.token
@@ -170,15 +180,17 @@ def verify_rest_response(response, endpoint):
         if _can_parse_as_json(response.text):
             raise RestException(json.loads(response.text))
         else:
-            base_msg = "API request to endpoint %s failed with error code " "%s != 200" % (
-                endpoint,
-                response.status_code,
+            base_msg = (
+                "API request to endpoint %s failed with error code "
+                "%s != 200" % (endpoint, response.status_code,)
             )
             raise MlflowException("%s. Response body: '%s'" % (base_msg, response.text))
 
     # Skip validation for endpoints (e.g. DBFS file-download API) which may return a non-JSON
     # response
-    if endpoint.startswith(_REST_API_PATH_PREFIX) and not _can_parse_as_json(response.text):
+    if endpoint.startswith(_REST_API_PATH_PREFIX) and not _can_parse_as_json(
+        response.text
+    ):
         base_msg = (
             "API request to endpoint was successful but the response body was not "
             "in a valid JSON format"
@@ -200,7 +212,10 @@ def extract_api_info_for_service(service, path_prefix):
         endpoints = service_method.GetOptions().Extensions[databricks_pb2.rpc].endpoints
         endpoint = endpoints[0]
         endpoint_path = _get_path(path_prefix, endpoint.path)
-        res[service().GetRequestClass(service_method)] = (endpoint_path, endpoint.method)
+        res[service().GetRequestClass(service_method)] = (
+            endpoint_path,
+            endpoint.method,
+        )
     return res
 
 
@@ -305,15 +320,15 @@ class MlflowHostCreds(object):
     """
 
     def __init__(
-            self,
-            host,
-            oath2_provider=None,
-            username=None,
-            password=None,
-            token=None,
-            ignore_tls_verification=False,
-            client_cert_path=None,
-            server_cert_path=None,
+        self,
+        host,
+        oath2_provider=None,
+        username=None,
+        password=None,
+        token=None,
+        ignore_tls_verification=False,
+        client_cert_path=None,
+        server_cert_path=None,
     ):
         if not host:
             raise MlflowException(
