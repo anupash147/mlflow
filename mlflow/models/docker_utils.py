@@ -122,6 +122,7 @@ def _build_image_code_build(image_name, entrypoint, mlflow_home=None, custom_set
     Build an MLflow Docker image that can be used to serve a
     The image is built locally and it requires Docker to run.
 
+    :rtype: object
     :param image_name: Docker image name.
     :param entry_point: String containing ENTRYPOINT directive for docker image
     :param mlflow_home: (Optional) Path to a local copy of the MLflow GitHub repository.

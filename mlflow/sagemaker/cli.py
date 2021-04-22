@@ -294,9 +294,9 @@ def code_build_and_push_container(build, container, mlflow_home):
     This function builds an MLflow Docker image.
     The image is built locally and it requires Docker to run.
     """
-    if not (build or push):
+    if not build:
         print("skipping both build and push, have nothing to do!")
-    if build:
+    else:
         sagemaker_image_entrypoint = """
         ENTRYPOINT ["python", "-c", "import sys; from mlflow.models import container as C; \
         C._init(sys.argv[1])"]
