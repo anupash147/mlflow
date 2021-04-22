@@ -99,3 +99,6 @@ travis_wait*.log
 
 # Pytorch logs
 lightning_logs
+
+# make code
+Makefile

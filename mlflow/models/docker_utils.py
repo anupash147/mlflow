@@ -13,7 +13,7 @@ DISABLE_ENV_CREATION = "MLFLOW_DISABLE_ENV_CREATION"
 
 _DOCKERFILE_TEMPLATE = """
 # Build an image that can serve mlflow models.
-FROM ubuntu:18.04
+FROM public.ecr.aws/ubuntu/ubuntu:18.04
 
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
          wget \
@@ -108,6 +108,46 @@ def _build_image(image_name, entrypoint, mlflow_home=None, custom_setup_steps_ho
         os.system("find {cwd}/".format(cwd=cwd))
         proc = Popen(
             ["docker", "build", "-t", image_name, "-f", "Dockerfile", "."],
+            cwd=cwd,
+            stdout=PIPE,
+            stderr=STDOUT,
+            universal_newlines=True,
+        )
+        for x in iter(proc.stdout.readline, ""):
+            eprint(x, end="")
+
+
+def _build_image_code_build(image_name, entrypoint, mlflow_home=None, custom_setup_steps_hook=None):
+    """
+    Build an MLflow Docker image that can be used to serve a
+    The image is built locally and it requires Docker to run.
+
+    :param image_name: Docker image name.
+    :param entry_point: String containing ENTRYPOINT directive for docker image
+    :param mlflow_home: (Optional) Path to a local copy of the MLflow GitHub repository.
+                        If specified, the image will install MLflow from this directory.
+                        If None, it will install MLflow from pip.
+    :param custom_setup_steps_hook: (Optional) Single-argument function that takes the string path
+           of a dockerfile context directory and returns a string containing Dockerfile commands to
+           run during the image build step.
+    """
+    mlflow_home = os.path.abspath(mlflow_home) if mlflow_home else None
+    with TempDir() as tmp:
+        cwd = tmp.path()
+        install_mlflow = _get_mlflow_install_step(cwd, mlflow_home)
+        custom_setup_steps = custom_setup_steps_hook(cwd) if custom_setup_steps_hook else ""
+        with open(os.path.join(cwd, "Dockerfile"), "w") as f:
+            f.write(
+                _DOCKERFILE_TEMPLATE.format(
+                    install_mlflow=install_mlflow,
+                    custom_setup_steps=custom_setup_steps,
+                    entrypoint=entrypoint,
+                )
+            )
+        _logger.info("Building docker image with name %s", image_name)
+        _logger.debug(os.system("find {cwd}/".format(cwd=cwd)))
+        proc = Popen(
+            ["sm-docker", "build", ".", "--repository", image_name, "--file", "Dockerfile"],
             cwd=cwd,
             stdout=PIPE,
             stderr=STDOUT,
