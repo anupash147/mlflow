@@ -1,4 +1,5 @@
 import os
+import re
 from subprocess import Popen, PIPE, STDOUT
 import logging
 
@@ -13,7 +14,7 @@ DISABLE_ENV_CREATION = "MLFLOW_DISABLE_ENV_CREATION"
 
 _DOCKERFILE_TEMPLATE = """
 # Build an image that can serve mlflow models.
-FROM public.ecr.aws/ubuntu/ubuntu:18.04
+FROM ubuntu:18.04
 
 RUN apt-get -y update && apt-get install -y --no-install-recommends \
          wget \
@@ -139,7 +140,9 @@ def _build_image_code_build(image_name, entrypoint, mlflow_home=None, custom_set
         custom_setup_steps = custom_setup_steps_hook(cwd) if custom_setup_steps_hook else ""
         with open(os.path.join(cwd, "Dockerfile"), "w") as f:
             f.write(
-                _DOCKERFILE_TEMPLATE.format(
+                re.sub(
+                    r"ubuntu:18.04", "public.ecr.aws/ubuntu/ubuntu:18.04", _DOCKERFILE_TEMPLATE
+                ).format(
                     install_mlflow=install_mlflow,
                     custom_setup_steps=custom_setup_steps,
                     entrypoint=entrypoint,
