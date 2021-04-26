@@ -13,6 +13,7 @@ from mlflow.protos.databricks_pb2 import INVALID_PARAMETER_VALUE
 from mlflow.utils.proto_json_utils import parse_dict
 from mlflow.utils.string_utils import strip_suffix
 from mlflow.exceptions import MlflowException, RestException
+from datetime import datetime
 
 _REST_API_PATH_PREFIX = "/api/2.0"
 RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
@@ -20,6 +21,51 @@ RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
 _logger = logging.getLogger(__name__)
 
 _DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
+
+
+def lastFetch(operation="r"):
+    # @todo for persisting the token
+    if operation == "w":
+        open(".lasttoken", "w").write(str(datetime.now()))
+        return open(".lasttoken", "r").readline()
+    else:
+        try:
+            return open(".lasttoken", "r").readline()
+        except FileNotFoundError:
+            return lastFetch("w")
+
+
+def get_bearer_token(oath_url, client_id, client_secret):
+    """
+    Get bearer token from an oath provider.
+
+    :param oath_url: example https://login.microsoftonline.com/<redacted>/oauth2/v2.0/token
+    :param client_id:
+    :param client_secret:
+    :return: bearer token
+    """
+
+    def reset_bearer():
+        """
+        This function will call itself until it recieves a bearer
+        """
+        try:
+            r = requests.post(
+                url="{}".format(oath_url),
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                data={
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "scope": "{}/.default".format(client_id),
+                    "grant_type": "client_credentials",
+                },
+            )
+            r.raise_for_status()
+            return r.json()["access_token"]
+        except (requests.exceptions.HTTPError, requests.exceptions.Timeout):
+            return reset_bearer()
+
+    return reset_bearer()
 
 
 def http_request(
@@ -38,7 +84,13 @@ def http_request(
     """
     hostname = host_creds.host
     auth_str = None
-    if host_creds.username and host_creds.password:
+    if host_creds.username and host_creds.password and host_creds.oath2_provider:
+        auth_str = "Bearer %s" % get_bearer_token(
+            oath_url=host_creds.oath2_provider,
+            client_id=host_creds.username,
+            client_secret=host_creds.password,
+        )
+    elif host_creds.username and host_creds.password and not host_creds.oath2_provider:
         basic_auth_str = ("%s:%s" % (host_creds.username, host_creds.password)).encode("utf-8")
         auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
     elif host_creds.token:
@@ -151,7 +203,10 @@ def extract_api_info_for_service(service, path_prefix):
         endpoints = service_method.GetOptions().Extensions[databricks_pb2.rpc].endpoints
         endpoint = endpoints[0]
         endpoint_path = _get_path(path_prefix, endpoint.path)
-        res[service().GetRequestClass(service_method)] = (endpoint_path, endpoint.method)
+        res[service().GetRequestClass(service_method)] = (
+            endpoint_path,
+            endpoint.method,
+        )
     return res
 
 
@@ -258,6 +313,7 @@ class MlflowHostCreds(object):
     def __init__(
         self,
         host,
+        oath2_provider=None,
         username=None,
         password=None,
         token=None,
@@ -282,6 +338,7 @@ class MlflowHostCreds(object):
                 error_code=INVALID_PARAMETER_VALUE,
             )
         self.host = host
+        self.oath2_provider = oath2_provider
         self.username = username
         self.password = password
         self.token = token

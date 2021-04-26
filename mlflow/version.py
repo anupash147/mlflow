@@ -1,8 +1,8 @@
 # Copyright 2018 Databricks, Inc.
 import re
 
-
-VERSION = "1.15.1.dev0"
+DEV_VERSION = "1.15.0.dev1"
+VERSION = "".join(re.findall(r"(\d+\.)(\d+\.)(\d+)", DEV_VERSION)[0])
 
 
 def is_release_version():
