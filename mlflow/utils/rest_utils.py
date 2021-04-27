@@ -14,12 +14,35 @@ from mlflow.utils.proto_json_utils import parse_dict
 from mlflow.utils.string_utils import strip_suffix
 from mlflow.exceptions import MlflowException, RestException
 
+from requests_oauthlib import OAuth2Session
+from oauthlib.oauth2 import BackendApplicationClient
+
 _REST_API_PATH_PREFIX = "/api/2.0"
 RESOURCE_DOES_NOT_EXIST = "RESOURCE_DOES_NOT_EXIST"
 
 _logger = logging.getLogger(__name__)
 
 _DEFAULT_HEADERS = {"User-Agent": "mlflow-python-client/%s" % __version__}
+
+
+def get_client_credentials(host):
+    """
+    Get bearer token from an oath provider.
+    :param host: object of class MlflowHostCreds
+    :return: token from oath endpoint
+    """
+    client = BackendApplicationClient(client_id=host.client_id)
+    oauth = OAuth2Session(client=client)
+    try:
+        token = oauth.fetch_token(
+            token_url=host.token_url,
+            client_id=host.client_id,
+            client_secret=host.client_secret,
+            scope=host.token_scope,
+        )
+        return token.get("access_token")
+    except (requests.exceptions.HTTPError, requests.exceptions.Timeout):
+        return get_client_credentials(host)
 
 
 def http_request(
@@ -43,6 +66,13 @@ def http_request(
         auth_str = "Basic " + base64.standard_b64encode(basic_auth_str).decode("utf-8")
     elif host_creds.token:
         auth_str = "Bearer %s" % host_creds.token
+    elif (
+        host_creds.token_url
+        and host_creds.client_id
+        and host_creds.client_secret
+        and host_creds.token_scope
+    ):
+        auth_str = "Bearer %s" % get_client_credentials(host_creds)
 
     from mlflow.tracking.request_header.registry import resolve_request_headers
 
@@ -264,6 +294,10 @@ class MlflowHostCreds(object):
         ignore_tls_verification=False,
         client_cert_path=None,
         server_cert_path=None,
+        token_url=None,
+        client_id=None,
+        client_secret=None,
+        token_scope=None,
     ):
         if not host:
             raise MlflowException(
@@ -288,3 +322,7 @@ class MlflowHostCreds(object):
         self.ignore_tls_verification = ignore_tls_verification
         self.client_cert_path = client_cert_path
         self.server_cert_path = server_cert_path
+        self.token_url = token_url
+        self.client_id = client_id
+        self.client_secret = client_secret
+        self.token_scope = token_scope

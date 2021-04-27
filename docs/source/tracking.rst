@@ -990,6 +990,9 @@ allow passing HTTP authentication to the tracking server:
   of the ``requests.request`` function
   (see `requests main interface <https://requests.readthedocs.io/en/master/api/>`_).
   This can be used to use a (self-signed) client certificate.
+- ``OATH2_TOKEN_PROVIDER_URL`` , ``OATH2_CLIENT_ID``, ``OATH2_CLIENT_SECRET`` and ``OATH2_TOKEN_SCOPE`` - To use the
+  oath2's `client_credentials` workflow implemented by providers like google, azure etc you should set `all the variables`
+  For more info refer to `RFC 6749 <https://tools.ietf.org/html/rfc6749#section-1.3.4>`_
 
 
 .. note::
