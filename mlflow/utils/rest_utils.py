@@ -55,6 +55,7 @@ def http_request(
         hostname and optional authentication.
     :return: Parsed API response
     """
+    print("http_request -->",host_creds)
     hostname = host_creds.host
     auth_str = None
     if host_creds.username and host_creds.password:
