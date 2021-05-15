@@ -48,6 +48,7 @@ SKINNY_REQUIREMENTS = [
     "requests>=2.17.3",
     "requests-oauthlib>=1.3.0",
     "oauthlib>=1.3.0",
+    "packaging",
 ]
 
 """

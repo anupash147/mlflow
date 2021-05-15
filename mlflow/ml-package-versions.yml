@@ -7,13 +7,13 @@ sklearn:
 
   models:
     minimum: "0.20.3"
-    maximum: "0.24.1"
+    maximum: "0.24.2"
     run: |
       pytest tests/sklearn/test_sklearn_model_export.py --large
 
   autologging:
     minimum: "0.20.3"
-    maximum: "0.24.1"
+    maximum: "0.24.2"
     requirements: ["matplotlib"]
     run: |
       pytest tests/sklearn/test_sklearn_autolog.py --large
@@ -40,7 +40,7 @@ pytorch-lightning:
 
   autologging:
     minimum: "1.0.5"
-    maximum: "1.2.8"
+    maximum: "1.3.0"
     requirements: ["torchvision", "scikit-learn"]
     run: |
       pytest tests/pytorch/test_pytorch_autolog.py --large
@@ -176,7 +176,24 @@ catboost:
   package_info:
     pip_release: "catboost"
     install_dev: |
-      pip install git+https://github.com/catboost/catboost.git#subdirectory=catboost/python-package
+      # The cross-version-tests workflow runs this command with the environment variable `CACHE_DIR`
+      if [ -d "$CACHE_DIR" ] && [ ! -z $(find $CACHE_DIR -type f -name "catboost-*.whl") ]; then
+        pip install $(find $CACHE_DIR -type f -name "catboost-*.whl")
+      else
+        # Build wheel from source
+        temp_dir=$(mktemp -d)
+        git clone --depth 1 https://github.com/catboost/catboost $temp_dir
+        cd $temp_dir/catboost/python-package
+        python setup.py bdist_wheel
+
+        # Copy wheel in cache directory
+        wheel_path=$(find dist -type f -name "*.whl")
+        mkdir -p $CACHE_DIR
+        cp $wheel_path $CACHE_DIR
+
+        # Install wheel
+        pip install $wheel_path
+      fi
 
   models:
     minimum: "0.23.1"
@@ -210,6 +227,8 @@ fastai-1.x:
     pip_release: "fastai"
 
   models:
+    # Avoid updating the maximum version to 2.x which isn't supported yet
+    pin_maximum: True
     minimum: "1.0.60"
     maximum: "1.0.61"
     requirements: ["scikit-learn"]
@@ -217,6 +236,7 @@ fastai-1.x:
       pytest tests/fastai/test_fastai_model_export.py --large
 
   autologging:
+    pin_maximum: True
     minimum: "1.0.60"
     maximum: "1.0.61"
     requirements: ["scikit-learn"]
@@ -249,7 +269,7 @@ spacy:
 
   models:
     minimum: "2.2.4"
-    maximum: "3.0.5"
+    maximum: "3.0.6"
     requirements: ["scikit-learn"]
     run: |
       pytest tests/spacy/test_spacy_model_export.py --large
@@ -276,16 +296,27 @@ spark:
   package_info:
     pip_release: "pyspark"
     install_dev: |
-      # TODO: Consider using cache because it takes long (20 ~ 30 min) to build spark from source
-      # on GitHub Actions environment.
-      temp_dir=$(mktemp -d)
-      git clone --depth 1 https://github.com/apache/spark $temp_dir
-      cd $temp_dir
-      export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=1g"
-      ./build/mvn -DskipTests --no-transfer-progress clean package
-      cd python
-      python setup.py bdist_wheel
-      pip install dist/*.whl
+      # The cross-version-tests workflow runs this command with the environment variable `CACHE_DIR`
+      if [ -d "$CACHE_DIR" ] && [ ! -z $(find $CACHE_DIR -type f -name "pyspark-*.whl") ]; then
+        pip install $(find $CACHE_DIR -type f -name "pyspark-*.whl")
+      else
+        # Build wheel from source
+        temp_dir=$(mktemp -d)
+        git clone --depth 1 https://github.com/apache/spark $temp_dir
+        cd $temp_dir
+        export MAVEN_OPTS="-Xmx2g -XX:ReservedCodeCacheSize=1g"
+        ./build/mvn -DskipTests --no-transfer-progress clean package
+        cd python
+        python setup.py bdist_wheel
+
+        # Copy wheel in cache directory
+        wheel_path=$(find dist -type f -name "*.whl")
+        mkdir -p $CACHE_DIR
+        cp $wheel_path $CACHE_DIR
+
+        # Install wheel
+        pip install $wheel_path
+      fi
 
   models:
     minimum: "3.0.0"
