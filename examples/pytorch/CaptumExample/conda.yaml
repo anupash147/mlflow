@@ -1,13 +1,11 @@
 channels:
 - pytorch
-- defaults
 - conda-forge
 dependencies:
 - python=3.8.2
-- pytorch
 - pip
 - pip:
-  - mlflow
+  - git+https://github.com/anupash147/mlflow.git@stable
   - pandas
   - scipy
   - captum
@@ -15,4 +13,4 @@ dependencies:
   - sklearn
   - prettytable
   - ipython
-
+  - torch

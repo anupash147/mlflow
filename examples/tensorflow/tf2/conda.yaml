@@ -1,12 +1,10 @@
 name: tensorflow-example
 channels:
-  - defaults
-  - anaconda
   - conda-forge
 dependencies:
   - python=3.6
   - pip
   - pip:
-    - mlflow
+    - git+https://github.com/anupash147/mlflow.git@stable
     - tensorflow==2.0.0
-
+    - boto3
