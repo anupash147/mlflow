@@ -1,8 +1,6 @@
 name: pytorch_example
 channels:
-  - defaults
   - pytorch
-  - anaconda
   - conda-forge
 dependencies:
   - python=3.6
@@ -10,5 +8,6 @@ dependencies:
   - pip:
     - torch==1.8.1
     - torchvision==0.9.1
-    - mlflow>=1.0
+    - git+https://github.com/anupash147/mlflow.git@stable
+    - boto3
     - tensorboardX

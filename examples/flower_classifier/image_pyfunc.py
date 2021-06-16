@@ -163,8 +163,7 @@ def _load_pyfunc(path):
 conda_env_template = """
 name: flower_classifier
 channels:
-  - defaults
-  - anaconda
+  - conda-forge
 dependencies:
   - python=={python_version}
   - keras=={keras_version}

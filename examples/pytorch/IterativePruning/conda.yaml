@@ -1,5 +1,4 @@
 channels:
-- defaults
 - conda-forge
 - pytorch
 dependencies:
@@ -7,7 +6,8 @@ dependencies:
 - pytorch>=1.6.0
 - pip
 - pip:
-  - mlflow
+  - git+https://github.com/anupash147/mlflow.git@stable
+  - boto3
   - torchvision
   - cloudpickle==1.6.0
   - pytorch_lightning>=1.0.5

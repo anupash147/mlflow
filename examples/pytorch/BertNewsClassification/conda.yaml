@@ -1,7 +1,6 @@
 channels:
 - pytorch
 - conda-forge
-- defaults
 dependencies:
 - python=3.8.2
 - pytorch=1.6.0
@@ -10,7 +9,7 @@ dependencies:
 - pytorch-lightning==1.0.2
 - pip
 - pip:
-  - mlflow
+  - git+https://github.com/anupash147/mlflow.git@stable
   - sklearn
   - cloudpickle==1.6.0
   - boto3
