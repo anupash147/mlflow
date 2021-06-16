@@ -166,10 +166,10 @@ channels:
   - conda-forge
 dependencies:
   - python=={python_version}
-  - keras=={keras_version}
-  - {tf_name}=={tf_version}
   - pip=={pip_version}  
-  - pillow=={pillow_version}
   - pip:
     - mlflow>=1.6
+    - pillow=={pillow_version}
+    - keras=={keras_version}
+    - {tf_name}=={tf_version}
 """

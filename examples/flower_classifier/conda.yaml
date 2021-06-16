@@ -3,12 +3,12 @@ channels:
   - conda-forge
 dependencies:
   - python=3.7
-  - pandas=1.0.3
-  - scikit-learn=0.22.1
-  - tensorflow=1.13.1
-  - keras=2.3.1
-  - pillow=7.0.0
   - pip=20.0.2
   - pip:
     - git+https://github.com/anupash147/mlflow.git@stable
     - boto3
+    - pandas==1.0.3
+    - scikit-learn==0.22.1
+    - tensorflow==1.13.1
+    - keras==2.3.1
+    - pillow==7.0.0

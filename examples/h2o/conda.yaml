@@ -3,10 +3,10 @@ channels:
   - conda-forge
 dependencies:
   - python=3.6
-  - numpy=1.14.2
-  - pandas
   - pip
   - pip:
     - h2o
     - git+https://github.com/anupash147/mlflow.git@stable
     - boto3
+    - numpy==1.14.2
+    - pandas

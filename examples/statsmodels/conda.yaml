@@ -3,9 +3,9 @@ channels:
   - conda-forge
 dependencies:
   - python=3.6
-  - statsmodels=0.11.1
-  - scikit-learn=0.22.1
   - pip
   - pip:
       - git+https://github.com/anupash147/mlflow.git@stable
       - boto3
+      - statsmodels==0.11.1
+      - scikit-learn==0.22.1

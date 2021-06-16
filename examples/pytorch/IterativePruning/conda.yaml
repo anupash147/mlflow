@@ -1,9 +1,7 @@
 channels:
 - conda-forge
-- pytorch
 dependencies:
 - python=3.8.2
-- pytorch>=1.6.0
 - pip
 - pip:
   - git+https://github.com/anupash147/mlflow.git@stable
@@ -13,3 +11,4 @@ dependencies:
   - pytorch_lightning>=1.0.5
   - ax-platform
   - prettytable
+  - torch>=1.6.0
