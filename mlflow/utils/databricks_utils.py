@@ -151,6 +151,16 @@ def get_cluster_id():
     return spark_session.conf.get("spark.databricks.clusterUsageTags.clusterId")
 
 
+def get_job_group_id():
+    try:
+        dbutils = _get_dbutils()
+        job_group_id = dbutils.entry_point.getJobGroupId()
+        if job_group_id is not None:
+            return job_group_id
+    except Exception:
+        return None
+
+
 def get_job_id():
     try:
         return _get_command_context().jobId().get()
@@ -171,6 +181,14 @@ def get_job_type():
         return _get_command_context().jobTaskType().get()
     except Exception:
         return _get_context_tag("jobTaskType")
+
+
+def get_command_run_id():
+    try:
+        return _get_command_context().commandRunId().get()
+    except Exception:
+        # Older runtimes may not have the commandRunId available
+        return None
 
 
 def get_webapp_url():

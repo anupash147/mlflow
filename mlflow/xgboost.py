@@ -41,13 +41,13 @@ from mlflow.utils.autologging_utils import (
     autologging_integration,
     safe_patch,
     exception_safe_function,
-    try_mlflow_log,
-    log_fn_args_as_params,
+    get_mlflow_run_params_for_fn_args,
     INPUT_EXAMPLE_SAMPLE_ROWS,
     resolve_input_example_and_signature,
     InputExampleInfo,
     ENSURE_AUTOLOGGING_ENABLED_TEXT,
     batch_metrics_logger,
+    MlflowAutologgingQueueingClient,
 )
 
 # Pylint doesn't detect objects used in class keyword arguments (e.g., metaclass) and considers
@@ -434,26 +434,84 @@ def autolog(
             Log feature importance plot.
             """
             import matplotlib.pyplot as plt
+            from cycler import cycler
 
             features = np.array(features)
-            importance = np.array(importance)
-            indices = np.argsort(importance)
-            features = features[indices]
-            importance = importance[indices]
+
+            # Structure the supplied `importance` values as a `num_features`-by-`num_classes` matrix
+            importances_per_class_by_feature = np.array(importance)
+            if importances_per_class_by_feature.ndim <= 1:
+                # In this case, the supplied `importance` values are not given per class. Rather,
+                # one importance value is given per feature. For consistency with the assumed
+                # `num_features`-by-`num_classes` matrix structure, we coerce the importance
+                # values to a `num_features`-by-1 matrix
+                indices = np.argsort(importance)
+                # Sort features and importance values by magnitude during transformation to a
+                # `num_features`-by-`num_classes` matrix
+                features = features[indices]
+                importances_per_class_by_feature = np.array(
+                    [[importance] for importance in importances_per_class_by_feature[indices]]
+                )
+                # In this case, do not include class labels on the feature importance plot because
+                # only one importance value has been provided per feature, rather than an
+                # one importance value for each class per feature
+                label_classes_on_plot = False
+            else:
+                importance_value_magnitudes = np.abs(importances_per_class_by_feature).sum(axis=1)
+                indices = np.argsort(importance_value_magnitudes)
+                features = features[indices]
+                importances_per_class_by_feature = importances_per_class_by_feature[indices]
+                label_classes_on_plot = True
+
+            num_classes = importances_per_class_by_feature.shape[1]
             num_features = len(features)
 
             # If num_features > 10, increase the figure height to prevent the plot
             # from being too dense.
             w, h = [6.4, 4.8]  # matplotlib's default figure size
             h = h + 0.1 * num_features if num_features > 10 else h
+            h = h + 0.1 * num_classes if num_classes > 1 else h
             fig, ax = plt.subplots(figsize=(w, h))
+            # When importance values are provided for each class per feature, we want to ensure
+            # that the same color is used for all bars in the bar chart that have the same class
+            colors_to_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"][:num_classes]
+            color_cycler = cycler(color=colors_to_cycle)
+            ax.set_prop_cycle(color_cycler)
 
-            yloc = np.arange(num_features)
-            ax.barh(yloc, importance, align="center", height=0.5)
-            ax.set_yticks(yloc)
+            # The following logic operates on one feature at a time, adding a bar to the bar chart
+            # for each class that reflects the importance of the feature to predictions of that
+            # class
+            feature_ylocs = np.arange(num_features)
+            # Define offsets on the y-axis that are used to evenly space the bars for each class
+            # around the y-axis position of each feature
+            offsets_per_yloc = np.linspace(-0.5, 0.5, num_classes) / 2 if num_classes > 1 else [0]
+            for feature_idx, (feature_yloc, importances_per_class) in enumerate(
+                zip(feature_ylocs, importances_per_class_by_feature)
+            ):
+                for class_idx, (offset, class_importance) in enumerate(
+                    zip(offsets_per_yloc, importances_per_class)
+                ):
+                    (bar,) = ax.barh(
+                        feature_yloc + offset,
+                        class_importance,
+                        align="center",
+                        # Set the bar height such that importance value bars for a particular
+                        # feature are spaced properly relative to each other (no overlap or gaps)
+                        # and relative to importance value bars for other features
+                        height=(0.5 / max(num_classes - 1, 1)),
+                    )
+                    if label_classes_on_plot and feature_idx == 0:
+                        # Only set a label the first time a bar for a particular class is plotted to
+                        # avoid duplicate legend entries. If we were to set a label for every bar,
+                        # the legend would contain `num_features` labels for each class.
+                        bar.set_label("Class {}".format(class_idx))
+
+            ax.set_yticks(feature_ylocs)
             ax.set_yticklabels(features)
             ax.set_xlabel("Importance")
             ax.set_title("Feature Importance ({})".format(importance_type))
+            if label_classes_on_plot:
+                ax.legend()
             fig.tight_layout()
 
             tmpdir = tempfile.mkdtemp()
@@ -461,15 +519,16 @@ def autolog(
                 # pylint: disable=undefined-loop-variable
                 filepath = os.path.join(tmpdir, "feature_importance_{}.png".format(imp_type))
                 fig.savefig(filepath)
-                try_mlflow_log(mlflow.log_artifact, filepath)
+                mlflow.log_artifact(filepath)
             finally:
                 plt.close(fig)
                 shutil.rmtree(tmpdir)
 
-        # logging booster params separately via mlflow.log_params to extract key/value pairs
-        # and make it easier to compare them across runs.
-        params = args[0] if len(args) > 0 else kwargs["params"]
-        try_mlflow_log(mlflow.log_params, params)
+        autologging_client = MlflowAutologgingQueueingClient()
+        # logging booster params separately to extract key/value pairs and make it easier to
+        # compare them across runs.
+        booster_params = args[0] if len(args) > 0 else kwargs["params"]
+        autologging_client.log_params(run_id=mlflow.active_run().info.run_id, params=booster_params)
 
         unlogged_params = [
             "params",
@@ -482,7 +541,14 @@ def autolog(
             "callbacks",
             "learning_rates",
         ]
-        log_fn_args_as_params(original, args, kwargs, unlogged_params)
+        params_to_log_for_fn = get_mlflow_run_params_for_fn_args(
+            original, args, kwargs, unlogged_params
+        )
+        autologging_client.log_params(
+            run_id=mlflow.active_run().info.run_id, params=params_to_log_for_fn
+        )
+
+        param_logging_operations = autologging_client.flush(synchronous=False)
 
         all_arg_names = inspect.getargspec(original)[0]  # pylint: disable=W1505
         num_pos_args = len(args)
@@ -514,9 +580,19 @@ def autolog(
             )
             if early_stopping:
                 extra_step = len(eval_results)
-                metrics_logger.record_metrics({"stopped_iteration": extra_step - 1})
-                metrics_logger.record_metrics({"best_iteration": model.best_iteration})
-                metrics_logger.record_metrics(eval_results[model.best_iteration], extra_step)
+                autologging_client.log_metrics(
+                    run_id=mlflow.active_run().info.run_id,
+                    metrics={
+                        "stopped_iteration": extra_step - 1,
+                        "best_iteration": model.best_iteration,
+                    },
+                )
+                autologging_client.log_metrics(
+                    run_id=mlflow.active_run().info.run_id,
+                    metrics=eval_results[model.best_iteration],
+                    step=extra_step,
+                )
+                early_stopping_logging_operations = autologging_client.flush(synchronous=False)
 
         # logging feature importance as artifacts.
         for imp_type in importance_types:
@@ -537,7 +613,7 @@ def autolog(
                     filepath = os.path.join(tmpdir, "feature_importance_{}.json".format(imp_type))
                     with open(filepath, "w") as f:
                         json.dump(imp, f)
-                    try_mlflow_log(mlflow.log_artifact, filepath)
+                    mlflow.log_artifact(filepath)
                 finally:
                     shutil.rmtree(tmpdir)
 
@@ -571,13 +647,13 @@ def autolog(
                 _logger,
             )
 
-            try_mlflow_log(
-                log_model,
-                model,
-                artifact_path="model",
-                signature=signature,
-                input_example=input_example,
+            log_model(
+                model, artifact_path="model", signature=signature, input_example=input_example,
             )
+
+        param_logging_operations.await_completion()
+        if early_stopping:
+            early_stopping_logging_operations.await_completion()
 
         return model
 
