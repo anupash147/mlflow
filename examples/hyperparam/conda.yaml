@@ -5,6 +5,8 @@ dependencies:
   - python=3.6
   - pip
   - pip:
+    - git+https://github.com/anupash147/mlflow.git@stable
+    - Gpy==1.9.2
     - numpy==1.19.5
     - click
     - pandas==0.22.0
@@ -13,8 +15,7 @@ dependencies:
     - tensorflow==1.13.1
     - matplotlib==2.2.2
     - keras==2.3.1
-    - mlflow>=1.6
-    - Gpy==1.9.5
     - GpyOpt==1.2.5
     - pyDOE==0.3.8
     - hyperopt==0.1
+    - boto3

@@ -168,7 +168,7 @@ dependencies:
   - python=={python_version}
   - pip=={pip_version}  
   - pip:
-    - mlflow>=1.6
+    - git+https://github.com/anupash147/mlflow.git@stable
     - pillow=={pillow_version}
     - keras=={keras_version}
     - {tf_name}=={tf_version}
