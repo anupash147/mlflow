@@ -1,7 +1,7 @@
 Type: Package
 Package: mlflow
 Title: Interface to 'MLflow'
-Version: 1.18.1
+Version: 1.18.0
 Authors@R: 
     c(person(given = "Matei",
              family = "Zaharia",
@@ -38,6 +38,7 @@ Imports:
     httr,
     ini,
     jsonlite,
+    AzureAuth (>= 1.3.2),
     openssl,
     processx,
     purrr,

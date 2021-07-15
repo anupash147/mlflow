@@ -29,7 +29,7 @@ new_mlflow_client_impl <- function(get_host_creds, get_cli_env = list, class = c
 }
 
 new_mlflow_host_creds <- function( host = NA, username = NA, password = NA, token = NA,
-                                   insecure = "False") {
+                                   insecure = "False", oath_kwargs = NA) {
   insecure_arg <- if (is.null(insecure) || is.na(insecure)) {
     "False"
   } else {
@@ -37,7 +37,7 @@ new_mlflow_host_creds <- function( host = NA, username = NA, password = NA, toke
   }
   structure(
     list(host = host, username = username, password = password, token = token,
-         insecure = insecure_arg),
+         insecure = insecure_arg, oath_kwargs = oath_kwargs),
     class = "mlflow_host_creds"
   )
 }
@@ -68,7 +68,12 @@ print.mlflow_host_creds <- function(x, ...) {
     },
     insecure = paste("insecure = ", as.character(mlflow_host_creds$insecure),
                      sep = ""),
-    sep = ", "
+    sep = ", ",
+    oath_kwargs = if (is.na(mlflow_host_creds$oath_kwargs)) {
+      ""
+    } else {
+      paste ("oath_kwargs = ", mlflow_host_creds$oath_kwargs, sep = "")
+    }
   )
   cat("mlflow_host_creds( ")
   do.call(cat, args[args != ""])
@@ -115,7 +120,8 @@ basic_http_client <- function(tracking_uri) {
       username = get_env_var("USERNAME"),
       password = get_env_var("PASSWORD"),
       token = get_env_var("TOKEN"),
-      insecure = get_env_var("INSECURE")
+      insecure = get_env_var("INSECURE"),
+      oath_kwargs = get_env_var("OATH2_KWARGS")
     )
   }
   cli_env <- function() {
@@ -124,7 +130,8 @@ basic_http_client <- function(tracking_uri) {
       MLFLOW_TRACKING_USERNAME = creds$username,
       MLFLOW_TRACKING_PASSWORD = creds$password,
       MLFLOW_TRACKING_TOKEN = creds$token,
-      MLFLOW_TRACKING_INSECURE = creds$insecure
+      MLFLOW_TRACKING_INSECURE = creds$insecure,
+      MLFLOW_OATH2_KWARGS = creds$oath_kwargs
     )
     res[!is.na(res)]
   }

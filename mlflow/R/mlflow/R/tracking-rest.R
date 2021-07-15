@@ -19,6 +19,18 @@ try_parse_response_as_text <- function(response) {
   })
 }
 
+# azure oath support
+get_client_credentials <- function(host) {
+  data <- jsonlite::fromJSON(host$oath_kwargs)
+  url_parts <- strsplit(data[['token_url']], split="/")
+  AzureAuth::get_azure_token(sprintf("%s//%s/",url_parts[[1]][1],url_parts[[1]][3]),
+                         tenant=url_parts[[1]][4],
+                         app=data[['client_id']],
+                         password=data[['client_secret']],
+                         auth_type="client_credentials")
+
+}
+
 #' @importFrom base64enc base64encode
 get_rest_config <- function(host_creds) {
   headers <- list()
@@ -27,6 +39,9 @@ get_rest_config <- function(host_creds) {
     paste("Basic", base64encode(charToRaw(basic_auth_str)), sep = " ")
   } else if (!is.na(host_creds$token)) {
     paste("Bearer", host_creds$token, sep = " ")
+  } else if (!is.na(host_creds$oath_kwargs)) {
+    token <- get_client_credentials(host_creds)
+    paste("Bearer", token[["credentials"]][["access_token"]], sep = " ")
   } else {
     NA
   }
