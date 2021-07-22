@@ -4,8 +4,7 @@ dependencies:
 - python=3.8.2
 - pip
 - pip:
-  - git+https://github.com/anupash147/mlflow.git@stable
-  - boto3
+  - mlflow
   - torchvision
   - cloudpickle==1.6.0
   - pytorch_lightning>=1.0.5

@@ -57,6 +57,8 @@ def _get_preferred_deployment_flavor(model_config):
         return mleap.FLAVOR_NAME
     elif pyfunc.FLAVOR_NAME in model_config.flavors:
         return pyfunc.FLAVOR_NAME
+    elif "crate" in model_config.flavors:
+        return "crate"
     else:
         raise MlflowException(
             message=(
@@ -528,22 +530,27 @@ def run_local(model_uri, port=5000, image=DEFAULT_IMAGE_NAME, flavor=None):
 
     deployment_config = _get_deployment_config(flavor_name=flavor)
 
-    _logger.info("launching docker image with path %s", model_path)
-    cmd = ["docker", "run", "-v", "{}:/opt/ml/model/".format(model_path), "-p", "%d:8080" % port]
-    for key, value in deployment_config.items():
-        cmd += ["-e", "{key}={value}".format(key=key, value=value)]
-    cmd += ["--rm", image, "serve"]
-    _logger.info("executing: %s", " ".join(cmd))
-    proc = Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True)
+    if flavor == 'crate':
+        _logger.info("Running in R context")
+        from mlflow.rfunc.backend import RFuncBackend
+        RFuncBackend(deployment_config).serve(model_uri=model_uri,port=port,host='127.0.0.1')
+    else:
+        _logger.info("launching docker image with path %s", model_path)
+        cmd = ["docker", "run", "-v", "{}:/opt/ml/model/".format(model_path), "-p", "%d:8080" % port]
+        for key, value in deployment_config.items():
+            cmd += ["-e", "{key}={value}".format(key=key, value=value)]
+        cmd += ["--rm", image, "serve"]
+        _logger.info("executing: %s", " ".join(cmd))
+        proc = Popen(cmd, stdout=sys.stdout, stderr=sys.stderr, universal_newlines=True)
 
-    def _sigterm_handler(*_):
-        _logger.info("received termination signal => killing docker process")
-        proc.send_signal(signal.SIGINT)
+        def _sigterm_handler(*_):
+            _logger.info("received termination signal => killing docker process")
+            proc.send_signal(signal.SIGINT)
 
-    import signal
+        import signal
 
-    signal.signal(signal.SIGTERM, _sigterm_handler)
-    proc.wait()
+        signal.signal(signal.SIGTERM, _sigterm_handler)
+        proc.wait()
 
 
 def _get_default_image_url(region_name):

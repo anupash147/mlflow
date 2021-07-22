@@ -21,6 +21,7 @@ from mlflow.models import Model
 from mlflow.models.model import MLMODEL_FILE_NAME
 from mlflow.models.docker_utils import DISABLE_ENV_CREATION
 from mlflow.version import VERSION as MLFLOW_VERSION
+from mlflow.tracking.artifact_utils import _download_artifact_from_uri
 
 MODEL_PATH = "/opt/ml/model"
 
@@ -29,7 +30,7 @@ DEPLOYMENT_CONFIG_KEY_FLAVOR_NAME = "MLFLOW_DEPLOYMENT_FLAVOR_NAME"
 
 DEFAULT_SAGEMAKER_SERVER_PORT = 8080
 
-SUPPORTED_FLAVORS = [pyfunc.FLAVOR_NAME, mleap.FLAVOR_NAME]
+SUPPORTED_FLAVORS = [pyfunc.FLAVOR_NAME, mleap.FLAVOR_NAME, "crate"]
 
 DISABLE_NGINX = "DISABLE_NGINX"
 
@@ -65,7 +66,9 @@ def _serve():
         # Older versions of mlflow may not specify a deployment configuration
         serving_flavor = pyfunc.FLAVOR_NAME
 
-    if serving_flavor == mleap.FLAVOR_NAME:
+    if "crate" in m.flavors:
+        _serve_crate()
+    elif serving_flavor == mleap.FLAVOR_NAME:
         _serve_mleap()
     elif pyfunc.FLAVOR_NAME in m.flavors:
         _serve_pyfunc(m)
@@ -172,6 +175,13 @@ def _serve_mleap():
     awaited_pids = _await_subprocess_exit_any(procs=[mleap])
     _sigterm_handler(awaited_pids)
 
+def _serve_crate():
+    print("going to execute crate")
+    command = "mlflow::mlflow_rfunc_serve('{0}', port = {1}, host = '{2}')".format(
+        MODEL_PATH, '8080', '0.0.0.0'
+    )
+    _execute(command)
+
 
 def _container_includes_mlflow_source():
     return os.path.exists("/opt/mlflow/setup.py")
@@ -205,3 +215,22 @@ def _sigterm_handler(pids):
             pass
 
     sys.exit(0)
+
+
+def _execute(command):
+    print(command)
+    env = os.environ.copy()
+    import sys
+    process = Popen(
+        ["Rscript", "-e", command],
+        env=env,
+        close_fds=False,
+        stdin=sys.stdin,
+        stdout=sys.stdout,
+        stderr=sys.stderr,
+    )
+    if process.wait() != 0:
+        raise Exception("Command returned non zero exit code.")
+    signal.signal(signal.SIGTERM, lambda a, b: _sigterm_handler(pids=[process.pid]))
+    awaited_pids = _await_subprocess_exit_any(procs=[process])
+    _sigterm_handler(awaited_pids)
